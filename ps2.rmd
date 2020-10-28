@@ -36,13 +36,22 @@ library(ggplot2)
 # Load Data
 
 ```{r}
-d = read.spss("data/Tamiretal2008ReplicationData.sav", to.data.frame=T)
+Tamiretal2008ReplicationData <- read_sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
+
+data
+
+d = as.data.frame(Tamiretal2008ReplicationData) 
+
+as_tibble(d)
+
 ```
 
 Take a look at the data structure:
 
 ```{r}
 head(d)
+
+str(d)
 ```
 
 This data is what we call **wide form** -- each subject is a single row, and the columns represent different observations. This is a somewhat inconvenient way of representing the data, for example if we wanted to do the same operation to each likert rating (for example normalize it to be in the range 0-1), we'd have to do it on each of the 40 or so rating columns. To avoid this, our eventual goal will be to convert the data into **long form**, where each row is a single observation. 
@@ -56,11 +65,18 @@ colnames(d)
 And see if you can figure out what range the likert scores are in. What's the highest number on the likert scale, and what's the lowest? (Hint, `d$Game1Angry1` is one of the likert rating columns, and you may want to use `unique` or `range` or `hist`)
 
 ```{r}
-## your code here
+glimpse(d)
+
+range(d$Game1Angry1)
+
+unique(d$Game1Angry1)
+
+
+hist(d$Game1Angry1)
 ```
 
-Highest number: [Your answer here]
-Lowest number: [Your answer here]
+Highest number: [7]
+Lowest number: [1]
 
 # cleaning up a bit
 
