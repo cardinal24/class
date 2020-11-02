@@ -4,15 +4,6 @@ author: "Kris Evans"
 date: "10/27/2020"
 output: html_document
 ---
----
-title: "Psych 251 PS2: Tidying Data"
-author: "Andrew Lampinen"
-date: "September 27, 2018"
-output:
-  html_document:
-    toc: true
-    toc_float: true
----
 
 In this assignment we'll learn about `dplyr` and `tidyr`, two packages from the `tidyverse` that allow elegant and easily understandable data tidying and manipulation.
 We'll do this by working through the steps of loading an actual dataset, tidying it up, and carrying out some basic analyses.
@@ -31,6 +22,7 @@ library(tidyr)
 library(dplyr)
 library(stringr) # useful for some string manipulation
 library(ggplot2)
+library(haven)
 ```
 
 # Load Data
@@ -38,9 +30,9 @@ library(ggplot2)
 ```{r}
 Tamiretal2008ReplicationData <- read_sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
 
-data
-
 d = as.data.frame(Tamiretal2008ReplicationData) 
+
+d
 
 as_tibble(d)
 
@@ -60,6 +52,8 @@ For now, take a look at the column names to get a better idea of what all is in 
 
 ```{r}
 colnames(d)
+
+rownames(d)
 ```
 
 And see if you can figure out what range the likert scores are in. What's the highest number on the likert scale, and what's the lowest? (Hint, `d$Game1Angry1` is one of the likert rating columns, and you may want to use `unique` or `range` or `hist`)
@@ -93,6 +87,7 @@ You can see participant 23's data and the fact that they did not do part 1 by lo
 
 ```{r}
 tail(d)
+head(d)
 ```
 
 Notice that participant 23 has missing values for part 1.
@@ -100,8 +95,21 @@ Notice that participant 23 has missing values for part 1.
 The researchers have made a column called `DoNotUse` based on their exlusion criteria. Use this column to filter the dataframe! (hint: this is a little trickier than it might be because of how R treats NA values. You may want to use `?unique` to check values in the column and check out `?is.na`.)
 
 ```{r}
+d$DoNotUse
+
+str(d$DoNotUse)
+
+#exclude subjects marked do not use
 filtered_d = d %>% 
-  filter(   ) # your code here: exclude subjects that are marked as "DoNotUse"
+  filter(Subject != 2) %>%
+  filter(Subject != 23)# your code here: exclude subjects that are marked as "DoNotUse"
+
+
+filtered_d
+
+tail(filtered_d)
+
+
 ```
 
 It's good practice to assign a new variable name (in this case `filtered_d`) to a data frame when you change it in an important way, or apply a code chunk that shouldn't be run twice. This helps prevent you seeing different results when you run your code in chunks (and might run one multiple times, or skip it, etc.) vs. knit the document.
@@ -138,7 +146,9 @@ Now you try! Fill in the selection criteria to get rid of the "Game" columns, wh
 
 ```{r}
 performance_hyp_d = filtered_d %>% 
-  select( ) # your code here: remove the columns containing "Game" in the name
+  select(-starts_with("Game")) # your code here: remove the columns containing "Game" in the name
+
+performance_hyp_d
 ```
 
 # Converting to long form
@@ -171,13 +181,19 @@ performance_hyp_long_d = performance_hyp_d %>%
                names_to='Measurement', 
                values_to='Score')
 head(performance_hyp_long_d)
+
+performance_hyp_long_d
+
 ```
 
 And you can convert the rating dataset! (Call the "Key" column "Measurement" and call the "Value" column "Rating", so that the code below will work)
 
 ```{r}
 rating_hyp_long_d = rating_hyp_d %>%
-  ## your code here
+    pivot_longer(cols = -c("Subject", "Cond"),
+                  names_to="Measurement",
+                  values_to="Rating")   #your code here
+
 head(rating_hyp_long_d)
 ```
 
@@ -190,6 +206,8 @@ performance_hyp_long_d = performance_hyp_long_d %>%
   mutate(ConfrontationalGame = grepl("SOF", Measurement), # create a new variable that will say whether the measurement was of the game soldier of fortune (SOF).
          WithMusic = !grepl("NoMusic|WithoutMusic", Measurement), # creates a new column named WithMusic, which is False if the measurement contains *either* "NoMusic" or "WithoutMusic"
          MusicCondition = factor(ifelse(Cond > 3, Cond-3, Cond), levels = 1:3, labels = c("Anger", "Exciting", "Neutral"))) # Get rid of uninterpretable condition labels
+
+performance_hyp_long_d
 ```
 
 Now you can help! For the rating dataset, write a test on a measurement name, using `grepl` or `%in%` to figure out whether it's a recall or a music rating. Your new `IsRecall` column should be true if the measurement name contain either "Friends" or "Strangers".
