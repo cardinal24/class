@@ -23,18 +23,21 @@ library(dplyr)
 library(stringr) # useful for some string manipulation
 library(ggplot2)
 library(haven)
+
+library(knitr)
 ```
 
 # Load Data
 
-```{r}
-Tamiretal2008ReplicationData <- read_sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
+```{r eval = FALSE}
+knitr::opts_chunk$set(eval = FALSE)
 
-d = as.data.frame(Tamiretal2008ReplicationData) 
+Tamiretal2008ReplicationData <- read.sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
+
+d = Tamiretal2008ReplicationData
 
 d
 
-as_tibble(d)
 
 ```
 
@@ -44,6 +47,8 @@ Take a look at the data structure:
 head(d)
 
 str(d)
+
+
 ```
 
 This data is what we call **wide form** -- each subject is a single row, and the columns represent different observations. This is a somewhat inconvenient way of representing the data, for example if we wanted to do the same operation to each likert rating (for example normalize it to be in the range 0-1), we'd have to do it on each of the 40 or so rating columns. To avoid this, our eventual goal will be to convert the data into **long form**, where each row is a single observation. 
@@ -53,7 +58,7 @@ For now, take a look at the column names to get a better idea of what all is in 
 ```{r}
 colnames(d)
 
-rownames(d)
+
 ```
 
 And see if you can figure out what range the likert scores are in. What's the highest number on the likert scale, and what's the lowest? (Hint, `d$Game1Angry1` is one of the likert rating columns, and you may want to use `unique` or `range` or `hist`)
@@ -96,13 +101,15 @@ The researchers have made a column called `DoNotUse` based on their exlusion cri
 
 ```{r}
 d$DoNotUse
-
+unique(d$DoNotUse)
 str(d$DoNotUse)
 
+?is.na
 #exclude subjects marked do not use
+
 filtered_d = d %>% 
-  filter(Subject != 2) %>%
-  filter(Subject != 23)# your code here: exclude subjects that are marked as "DoNotUse"
+  #filter(Subject != 2, Subject != 23) %>%
+  filter(is.na(DoNotUse))# your code here: exclude subjects that are marked as "DoNotUse"
 
 
 filtered_d
@@ -126,10 +133,10 @@ To get rid of these, we'll use the `select` function to take only the columns we
 
 ```{r}
 filtered_d = filtered_d %>% 
-  select(c("Subject", "Cond"), # Generally important columns for both hypotheses
+  dplyr::select(c("Subject", "Cond"), # Generally important columns for both hypotheses
          contains("Game"), # we want all the game columns for hypothesis 1
-         -contains("Intro"), -c("WhichGames", "GameComments"), # except these
-         starts_with("DinerDashWith"), c("SOFMusicEnemies", "SOFNoMusicEnemies")) # These columns are for hypothesis 2
+         contains("Intro"), -c("WhichGames", "GameComments"), # except these
+         starts_with("DinerDashWith"), c("SOFMusicEnemies","SOFNoMusicEnemies")) # These columns are for hypothesis 2
 ```
 
 Even better, let's split this into separate data frames for hypothesis 1 and hypothesis 2, since they are different types of experiments with different measurements, and therefore different analyses that will need to be performed. Now that we've cleaned up the data, this is pretty easy to do! We'll just drop the columns that are for the other hypothesis. The `select` function lets us choose which columns to remove (instead of which to keep) by putting a minus sign in front of them. First, let's create a dataset for the rating hypothesis by getting rid of the game performance columns:
@@ -137,7 +144,7 @@ Even better, let's split this into separate data frames for hypothesis 1 and hyp
 ```{r}
 rating_hyp_d = filtered_d %>% 
   filter(is.na(DoNotUseVideoGamePerformanceData)) %>% # first, let's get rid of the subjects who did so poorly on one game that their data is unusable
-  select(-DoNotUseVideoGamePerformanceData, # now get rid of that column
+  dplyr::select(-DoNotUseVideoGamePerformanceData, # now get rid of that column
          -starts_with("DinerDash"), # and the other columns we don't need
          -starts_with("SOF"))
 ```
@@ -146,7 +153,7 @@ Now you try! Fill in the selection criteria to get rid of the "Game" columns, wh
 
 ```{r}
 performance_hyp_d = filtered_d %>% 
-  select(-starts_with("Game")) # your code here: remove the columns containing "Game" in the name
+  dplyr::select(-starts_with("Game")) # your code here: remove the columns containing "Game" in the name
 
 performance_hyp_d
 ```
@@ -156,7 +163,10 @@ performance_hyp_d
 Now we want to convert the data to long form, to make the rest of our manipulations easier. To do this, we can use `pivot_longer` on the target columns. This will take many columns, and change the column names into entries in a "key" column, while the values that were in the original column will be turned into entries in a "value" column. It's easiest to see with an example:
 
 ```{r}
+
+
 tiny_demo_d = head(performance_hyp_d, 2) # get just the first two subjects performance data, for a demo
+
 ```
 
 First, take a look at the original wide-form data:
@@ -166,9 +176,14 @@ tiny_demo_d
 
 Now, take a look at the long-form version:
 ```{r}
-tiny_demo_d %>% pivot_longer(cols=-c("Subject", "Cond"), # this tells it to transform all columns *except* these ones
+
+
+tiny_demo_d %>% tidyr::pivot_longer(
+                              cols = -c("Subject", "Cond"), # this tells it to transform all columns *except* these ones
                              names_to='Measurement', 
                              values_to='Value')
+
+
 ```
 
 See how the columns have been converted into rows (except for the two we excluded), and the dataset has gone from wide to long?
@@ -177,20 +192,19 @@ Now let's actually convert the performance dataset
 
 ```{r}
 performance_hyp_long_d = performance_hyp_d %>%
-  pivot_longer(cols=-c("Subject", "Cond"),
+ tidyr:: pivot_longer(cols=-c("Subject", "Cond"),
                names_to='Measurement', 
                values_to='Score')
-head(performance_hyp_long_d)
 
-performance_hyp_long_d
+head(performance_hyp_long_d)
 
 ```
 
 And you can convert the rating dataset! (Call the "Key" column "Measurement" and call the "Value" column "Rating", so that the code below will work)
 
 ```{r}
-rating_hyp_long_d = rating_hyp_d %>%
-    pivot_longer(cols = -c("Subject", "Cond"),
+rating_hyp_long_d = rating_hyp_d %>% select(-Game1Intro, -Game2Intro, -Game3Intro, -Game4Intro) %>%
+    tidyr:: pivot_longer(cols = -c("Subject", "Cond"),
                   names_to="Measurement",
                   values_to="Rating")   #your code here
 
@@ -214,9 +228,12 @@ Now you can help! For the rating dataset, write a test on a measurement name, us
 
 ```{r}
 rating_hyp_long_d = rating_hyp_long_d %>%
-  mutate(
-    IsRecall = ,## Your code here
-  )
+ mutate(IsRecall = grepl("Friends|Strangers", Measurement)) 
+
+
+    
+   
+rating_hyp_long_d
 ```
 
 Here are a couple other useful ways of manipulating columns. (You won't remember all the functions you see here now, but that's okay. You can always reference this tutorial later if there's something you need to figure out how to do.)
@@ -246,6 +263,7 @@ To make this more concrete, let's see how the `group_by` function can let us com
 performance_hyp_long_d %>% 
   group_by(ConfrontationalGame) %>%
   summarize(AvgScore = mean(Score, na.rm=T)) # the na.rm tells R to ignore NA values
+
 ```
 
 This makes it clear why we can't just z-score the games together! The scores are very different between games. So let's z-score within groups (using the `scale` function):
@@ -254,7 +272,8 @@ This makes it clear why we can't just z-score the games together! The scores are
 performance_hyp_long_d = performance_hyp_long_d %>%
   group_by(ConfrontationalGame, WithMusic) %>% # we're going to compute four sets of z-scores, one for the confrontational game without music, one for the confrontational game with, one for the nonconfrontational game without music, and one for the nonconfrontational game with
   mutate(z_scored_performance = scale(Score)) %>%
-  ungroup()
+  
+ungroup()
 ```
 
 ## Rating Hypothesis
@@ -263,12 +282,14 @@ The rating hypothesis analysis also requires some grouped manipulation. The expe
 
 ```{r}
 rating_summary_d = rating_hyp_long_d %>% 
+  group_by(ConfrontationalGame, Emotion) %>%
+  summarise(MeanRating = mean(Rating, na.rm = T))
   ## your code here
 ```
 
 Let's take a look at the result:
 
-```{r}
+```{r Test this chunk name}
 rating_summary_d
 ```
 
@@ -278,6 +299,8 @@ And a simple bar plot (don't worry too much about what exactly this code is doin
 ggplot(rating_summary_d, aes(x=ConfrontationalGame, y=MeanRating, fill=Emotion)) +
   geom_bar(position="dodge", stat="identity") + 
   scale_fill_brewer(palette="Set1")
+
+
 ```
 
 Up to reordering (and the fact that we didn't compute error bars), this is a pretty decent replication of Fig. 1 from the original Tamir et al. paper. The ratings were highest for Angry in the confrontational game, and lowest for Angry in the non-confrontational game.
@@ -298,15 +321,17 @@ To compute the difference score, we have to make our data a bit wider. We now wa
 ```{r}
 performance_diff_d = performance_hyp_long_d %>%
   mutate(WithMusic = factor(WithMusic, levels=c(F, T), labels=c("PreMusic", "PostMusic"))) %>% # first, tweak the variable so our code is easier to read.
-  select(-c("Score", "Measurement")) %>% # now we remove columns we don't need (bonus: leave them in and see if you can understand what goes wrong!)
+  ##select(-c("Score", "Measurement")) %>% # now we remove columns we don't need (bonus: leave them in and see if you can understand what goes wrong!)
   spread(WithMusic, z_scored_performance) %>%
   mutate(ImprovementScore=PostMusic-PreMusic)
+
 ```
 
 Let's take a look at the end result:
 
 ```{r}
 performance_diff_d
+
 ```
 
 If you don't understand every step of that code (or any other `dplyr` code), it can be helpful to look at the result of running just the first line, then just the first two lines, and so on.
@@ -315,6 +340,9 @@ Now we're finally to reproduce Fig. 2 from Tamir et al., we just need to get the
 
 ```{r}
 performance_diff_summary_d = performance_diff_d %>%
+  group_by(ConfrontationalGame, WithMusic, MusicCondition) 
+
+
   ## Your code here
 ```
 
