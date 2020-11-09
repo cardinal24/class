@@ -1,0 +1,135 @@
+---
+title: "psych 251. ps3 - Reproducibility Report: Group A Choice 1"
+author: "Kris Evans"
+date: "11/4/2020"
+output: html_document
+---
+
+-------
+
+For this exercise, please try to reproduce the results from Study 1 of the associated paper (Joel, Teper, & MacDonald, 2014). The PDF of the paper is included in the same folder as this Rmd file. 
+
+#### Methods summary: 
+
+In study 1, 150 introductory psychology students were randomly assigned to a "real" or a "hypothetical" condition. In the real condition, participants believed that they would have a real opportuniy to connect with potential romantic partners. In the hypothetical condition, participants simply imagined that they are on a date. All participants were required to select their favorite profile and answer whether they were willing to exchange contact information. 
+
+------
+
+#### Target outcomes: 
+
+Below is the specific result you will attempt to reproduce (quoted directly from the results section of Study 1):
+
+>> We next tested our primary hypothesis that participants would be more reluctant to reject the unattractive date when they believed the situation to be real rather than hypothetical. Only 10 of the 61 participants in the hypothetical condition chose to exchange contact information with the unattractive potential date (16%). In contrast, 26 of the 71 participants in the real condition chose to exchange contact information (37%). A chi-square test of independence indicated that participants were significantly less likely to reject the unattractive potential date in the real condition compared with the hypothetical condition, X^2(1, N = 132) = 6.77, p = .009.
+------
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+
+
+```
+
+# Step 1: Load packages
+
+```{r}
+library(tidyverse) # for data munging
+library(knitr) # for kable table formating
+library(haven) # import and export 'SPSS', 'Stata' and 'SAS' Files
+library(readxl) # import excel files
+# #optional packages:
+library(broom)
+
+library(labelled)# converts SPSS's labelled to R's factor 
+```
+
+# Step 2: Load data
+
+```{r}
+# Just Study 1
+d <- read_sav("~/R Mac working folder/class/problem_sets/ps3/Group A/Choice 1/data/Empathy Gap Study 1 data.sav")
+
+```
+
+# Step 3: Tidy data
+
+```{r}
+
+#create table with key variabbles
+dt <- d %>% select(ID, condition, exchangeinfo, otherfocused_motives, selffocused_motives, selfattractive, otherattractive)
+
+
+#came back with notes and turned these to factors
+dt$condition <- to_factor(dt$condition)
+dt$exchangeinfo <- to_factor(dt$exchangeinfo)
+
+dt
+```
+# Step 4: Run analysis
+
+## Descriptive statistics
+
+> Only 10 of the 61 participants in the hypothetical condition chose to exchange contact information with the unattractive potential date (16%). In contrast, 26 of the 71 participants in the real condition chose to exchange contact information (37%).
+
+```{r}
+ 
+ dt %>% filter(condition == 0, exchangeinfo == 2) %>%
+  nrow()  ##how many people chose not to exchange contact info in the hypothetical condition? 51
+
+ dt %>% filter(condition == 0, exchangeinfo == 1) %>%
+  nrow() ## 10 chose to exchange
+
+
+
+ dt %>% filter(condition == 1, exchangeinfo == 2) %>%
+  nrow()  #how many chose not to exchange in the real? 45
+
+  dt %>% filter(condition == 1, exchangeinfo == 1) %>%
+  nrow() ##26 chose to exchange
+ 
+
+  summary(dt)
+  
+  
+ 
+
+  # reproduce the above results here
+
+```
+
+## Inferential statistics
+
+> A chi-square test of independence indicated that participants were significantly less likely to reject the unattractive potential date in the real condition compared with the hypothetical condition, X^2(1, N = 132) = 6.77, p = .009.
+
+h0-null - no difference relationship between real condition and hypo condition 
+h1
+
+```{r}
+
+dt2 <- table(dt$condition, dt$exchangeinfo) #contingency table
+
+ggplot(dt) + aes(x = condition, fill = exchangeinfo) +
+  geom_bar () +
+  scale_fill_hue() 
+
+test <- chisq.test(dt2, correct = FALSE)
+
+test
+
+head(dt)
+summary(test)
+
+
+## reproduce the above results here - we know that the relationship between condition is significantly related to number of people who agree to say yes to exchange information and that the hypothetical (0) condition is associated with less exchange of information - we see the real condition is associated with more people saying yes (1 vs 2) to exchange info, the null hypothesis h0 is that there is no significant difference between condition and exchanging information, which is rejected at w p.016 . as we dig deeper we see that the relationship shows that people in the real condition were less likely to reject exchanging info.  - i was having issues with the same exat p valu ebut then i set the correct = FALSE to get the same, which removed the Yates continuty correction
+```
+
+# Step 5: Reflection
+
+Were you able to reproduce the results you attempted to reproduce? If not, what part(s) were you unable to reproduce?
+
+> ANSWER HERE
+How difficult was it to reproduce your results? 
+I'm not sure how I would grade the difficulty because to some degree I knew what I Wanted to do but had difficutly doing that but eventually made it there. 
+> ANSWER HERE
+What aspects made it difficult? What aspects made it easy?
+-switching to a mac made it a bit challenging to upload and get used to this workflow. step 2 and 3 were fine assuming it is accurate. im not sure i computed the correct descriptive but putting together the questions with matrixes and filters allowed me to answer specific questions. i wasnt sure if i conducted the right method because the output is different and took time to think through the setup adn interpretion of the dataframe to get at the answer to the primary question. the simple design made it easy to analyse the statistics.
+> ANSWER HERE
+the paper made it easy to see what test was simportant and which variables  were associated as there are other variables that may get confused in this set.

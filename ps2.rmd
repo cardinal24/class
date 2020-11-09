@@ -32,7 +32,7 @@ library(knitr)
 ```{r eval = FALSE}
 knitr::opts_chunk$set(eval = FALSE)
 
-Tamiretal2008ReplicationData <- read.sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
+Tamiretal2008ReplicationData <- read_sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
 
 d = Tamiretal2008ReplicationData
 
@@ -44,7 +44,6 @@ d
 Take a look at the data structure:
 
 ```{r}
-head(d)
 
 str(d)
 
@@ -66,7 +65,7 @@ And see if you can figure out what range the likert scores are in. What's the hi
 ```{r}
 glimpse(d)
 
-range(d$Game1Angry1)
+
 
 unique(d$Game1Angry1)
 
@@ -271,9 +270,9 @@ This makes it clear why we can't just z-score the games together! The scores are
 ```{r}
 performance_hyp_long_d = performance_hyp_long_d %>%
   group_by(ConfrontationalGame, WithMusic) %>% # we're going to compute four sets of z-scores, one for the confrontational game without music, one for the confrontational game with, one for the nonconfrontational game without music, and one for the nonconfrontational game with
-  mutate(z_scored_performance = scale(Score)) %>%
+  mutate(z_scored_performance = scale(Score)) 
   
-ungroup()
+
 ```
 
 ## Rating Hypothesis
@@ -323,7 +322,7 @@ performance_diff_d = performance_hyp_long_d %>%
   mutate(WithMusic = factor(WithMusic, levels=c(F, T), labels=c("PreMusic", "PostMusic"))) %>% # first, tweak the variable so our code is easier to read.
   ##select(-c("Score", "Measurement")) %>% # now we remove columns we don't need (bonus: leave them in and see if you can understand what goes wrong!)
   spread(WithMusic, z_scored_performance) %>%
-  mutate(ImprovementScore=PostMusic-PreMusic)
+  mutate(ImprovementScore=PostMusic-PreMusic) ## not sure whats happening with the select but looks like the NAs in the pre and post mess up the improvment score, would be best to turn NAs into 0s?
 
 ```
 
@@ -337,10 +336,15 @@ performance_diff_d
 If you don't understand every step of that code (or any other `dplyr` code), it can be helpful to look at the result of running just the first line, then just the first two lines, and so on.
 
 Now we're finally to reproduce Fig. 2 from Tamir et al., we just need to get the mean differences within each game and each kind of music, and save them to a variable called `MeanImprovementScore`:
+###where i left off 
 
 ```{r}
-performance_diff_summary_d = performance_diff_d %>%
-  group_by(ConfrontationalGame, WithMusic, MusicCondition) 
+
+performance_diff_summary_d = performance_diff_d %>%  tidyr::replace_na(list(PreMusic=0, PostMusic=0)) %>%
+  group_by(ConfrontationalGame, MusicCondition) %>%
+  ##mutate_all(~replace(., is.na(.),0)) %>%
+summarise(MeanImprovementScore = mean(ImprovementScore))
+ 
 
 
   ## Your code here
