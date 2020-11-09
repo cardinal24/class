@@ -1,7 +1,7 @@
 ---
 title: "Psych 251 PS2"
 author: "Kris Evans"
-date: "10/27/2020"
+date: "2020/10/25"
 output: html_document
 ---
 
