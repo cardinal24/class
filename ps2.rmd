@@ -34,7 +34,7 @@ knitr::opts_chunk$set(eval = FALSE)
 
 Tamiretal2008ReplicationData <- read_sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
 
-d = Tamiretal2008ReplicationData
+d <- data_frame(Tamiretal2008ReplicationData)
 
 d
 
@@ -44,10 +44,6 @@ d
 Take a look at the data structure:
 
 ```{r}
-
-str(d)
-
-
 ```
 
 This data is what we call **wide form** -- each subject is a single row, and the columns represent different observations. This is a somewhat inconvenient way of representing the data, for example if we wanted to do the same operation to each likert rating (for example normalize it to be in the range 0-1), we'd have to do it on each of the 40 or so rating columns. To avoid this, our eventual goal will be to convert the data into **long form**, where each row is a single observation. 
@@ -336,7 +332,7 @@ performance_diff_d
 If you don't understand every step of that code (or any other `dplyr` code), it can be helpful to look at the result of running just the first line, then just the first two lines, and so on.
 
 Now we're finally to reproduce Fig. 2 from Tamir et al., we just need to get the mean differences within each game and each kind of music, and save them to a variable called `MeanImprovementScore`:
-###where i left off 
+###where i left off had issues seeing problem and getting rid of 0 
 
 ```{r}
 
