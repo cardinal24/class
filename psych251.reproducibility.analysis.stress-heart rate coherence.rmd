@@ -1,0 +1,353 @@
+---
+title: "psych251.reproducibility.analysis.stress-heart rate coherence"
+author: "Kris Evans"
+date: "11/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+
+### Packages
+```{r message=FALSE}
+library(readr)
+library(tidyverse)
+library(knitr)
+library(lme4)
+
+```
+
+### Read in processed data files 
+Files generated in Prep_Coherence_MIDUSII.R script
+
+```{r read in data}
+
+setwd("~/R Mac working folder")
+
+#load cleaned and merged data so farfrom this step and work from here - should have all the proper variables and merged diff data sets by M2ID
+#should look wide and long data?
+
+#psych_251_repro_df <- read_csv("R Mac working folder/sommerfeldt2019/psych.251.repro.df.csv")
+
+df <- psych_251_repro_df
+
+```
+
+```{r}
+glimpse(df)
+
+
+df %>% count(stress1)
+
+```
+
+
+
+```{r drop participants}
+#drop participants from dataset who do not have stress and hr data timepoints minus stress/hr 6
+#make stress and heart rate correlations
+
+#drop stress - in paper mentioned only without five complete data points for sr stress but should also befor hr
+df.s <- df %>% dplyr::group_by(M2ID) %>% drop_na(stress1, stress2, stress3, stress4, stress5) %>% dplyr::select(-stress6) 
+
+#drophr framework but will keep HR in as isnt explicitly mentioned also some data spots arent good due to instrument rill return
+df.shr <- df.s %>% group_by(M2ID) %>% drop_na(hr1, hr2, hr3, hr4, hr5) %>% dplyr::select(-hr6)
+
+#looks like 967 observations less than intended
+summary(df.shr$IL6)
+
+summary(df.shr$stress1)
+summary(df.shr$stress2)
+sd(df.shr$stress1)
+sd(df.shr$stress2)
+
+
+summarize(df.shr)
+
+
+
+```
+
+```{r}
+ 
+```
+
+
+```{r rename}
+
+#rename var to separate easier
+ df.shr1 <- dplyr::rename(df.shr, stress_1 = stress1)
+ 
+df.shr2 <- dplyr::rename(df.shr1, stress_2 = stress2)
+df.shr3 <- dplyr::rename(df.shr2, stress_3 = stress3)  
+df.shr4 <- dplyr::rename(df.shr3, stress_4 = stress4)  
+df.shr5 <- dplyr::rename(df.shr4, stress_5 = stress5)  
+
+df.shr6 <- dplyr::rename(df.shr5, hr_1 = hr1) 
+df.shr7 <- dplyr::rename(df.shr6, hr_2 = hr2) 
+df.shr8 <- dplyr::rename(df.shr7, hr_3 = hr3) 
+df.shr9 <- dplyr::rename(df.shr8, hr_4 = hr4) 
+df.shr10 <- dplyr::rename(df.shr9, hr_5 = hr5) 
+```
+
+```{r pivot longer}
+wDF <- df.shr10
+
+#pivot longer, each participant has 5 rows per stress or hr
+
+df.Ls <- pivot_longer(df.shr10, cols = starts_with("stress"), names_to = c("stress","timepoint"), names_sep = "_", values_to = "stress_value")  
+ 
+  
+df.Lhr <- pivot_longer(df.shr10, cols = starts_with("hr"), names_to = c("hr", "timepoint"), names_sep = "_", values_to = "hr_value")
+```
+
+```{r merge data sets and final}
+#merge two long frames by tp and m2id
+
+m.LDF <- merge(df.Ls, df.Lhr, 
+                   by.x = c("M2ID", "timepoint"), 
+                   by.y = c("M2ID", "timepoint"), 
+                   all.x = TRUE, all.y = FALSE)
+
+#select key variables needed for long dataframe
+f.Ldf <- m.LDF %>% dplyr::select(M2ID, timepoint, stress_value, hr_value, pwb2.x, COPE_denial.x, IL6.x, CRP.x, P4_CESD.x, P4_STAItrait.x, M2FAMNUM.x, P4_age.x)
+
+#key variables for wide df
+
+f.Wdf <- wDF %>% dplyr::select(M2ID, pwb2, COPE_denial, IL6, CRP, P4_CESD, P4_STAItrait, M2FAMNUM, stress_1, stress_2, stress_3, stress_4, stress_5, hr_1, hr_2, hr_3, hr_4, hr_5, P4_age)
+```
+
+#See Prep_Coherence_MIDUSII.R for correlation computation. There, each subject’s set of heart rate and stress measures are subset to their #own data frame and a correlation is computed. The resulting within-subject (i.e., single-subject) r’s compose a new variable in the main #dataframe. ### Center correlations variable
+
+
+
+```{r make coherence variable}
+#cor between stress and hr within participant, unique for each participant coherence between variables -- dont think it is just at time points but an overall coefficient between stress and hr - return to this for supplemental time
+
+
+
+```
+
+
+##final wrangling and transforming
+### Cluster mean center talked about for each variable to enable better comparison
+#has to do with doing fixed effects models and havving effective predictor variables
+#centers mean at 0, changes associations of variables- confusing, should try all variables in models
+#especialy in multilevel models
+#problemmatic if done for DV because reduces error term messes up std errors - never center DV (HR)
+#helps get within and between effects equires different levels in model
+#changes interecpt of regression model not the coeffcients-estimate withineffect cange at individual level for individual outcomes
+
+```{r cluster_mean_center}
+f.Ldf$stress_CMC = f.Ldf$stress_value - ave(f.Ldf$stress_value, f.Ldf$M2ID, na.rm=T)
+f.Ldf$hr_CMC = f.Ldf$hr - ave(f.Ldf$hr, f.Ldf$M2ID, na.rm=T) #be aware if using thing can also CMC other predictors
+
+f.Ldf$pwb2_CMC = f.Ldf$pwb2.x - ave(f.Ldf$pwb2.x, f.Ldf$M2ID, na.rm=T)
+f.Ldf$P4_CESD_CMC = f.Ldf$P4_CESD.x - ave(f.Ldf$P4_CESD.x, f.Ldf$M2ID, na.rm=T)
+f.Ldf$COPE_d_CMC = f.Ldf$COPE_denial.x - ave(f.Ldf$COPE_denial.x, f.Ldf$M2ID, na.rm=T)
+f.Ldf$IL6_CMC = f.Ldf$IL6.x - ave(f.Ldf$IL6.x, f.Ldf$M2ID, na.rm=T)
+f.Ldf$CRP_CMC = f.Ldf$CRP.x - ave(f.Ldf$CRP.x, f.Ldf$M2ID, na.rm=T)
+f.Ldf$STAI_CMC = f.Ldf$P4_STAItrait.x - ave(f.Ldf$P4_STAItrait.x, f.Ldf$M2ID, na.rm=T)
+
+```
+
+
+### Mean Center variables only - paper uses MC variables not all CMC
+```{r mean_center - Long DF}
+#age was used as COV
+f.Ldf$P4_age_MC = f.Ldf$P4_age.x - mean(f.Ldf$P4_age.x, na.rm=T)
+
+# Self reports
+f.Ldf$pwb2_MC = f.Ldf$pwb2.x - mean(f.Ldf$pwb2.x, na.rm=T)
+f.Ldf$P4_CESD_MC = f.Ldf$P4_CESD.x - mean(f.Ldf$P4_CESD.x, na.rm=T)
+f.Ldf$P4_STAItrait_MC = f.Ldf$P4_STAItrait.x - mean(f.Ldf$P4_STAItrait.x, na.rm=T)
+f.Ldf$COPE_denial_MC = f.Ldf$COPE_denial.x - mean(f.Ldf$COPE_denial.x, na.rm=T)
+
+# Divide pwb, cesd, stai by 10 so SEs larger, more interpretable
+f.Ldf$pwb2_MC_d10 = f.Ldf$pwb2_MC/10.0
+f.Ldf$P4_CESD_MC_d10 = f.Ldf$P4_CESD_MC/10.0
+f.Ldf$P4_STAItrait_MC_d10 = f.Ldf$P4_STAItrait_MC/10.0
+
+# Inflammatory
+f.Ldf$IL6_MC = f.Ldf$IL6.x - mean(f.Ldf$IL6.x, na.rm=T)
+f.Ldf$CRP_MC = f.Ldf$CRP.x - mean(f.Ldf$CRP.x, na.rm=T)
+```
+
+```{r Mean Center Wide DF}
+# Wide data frame  f.WDF
+f.Wdf$P4_age_MC = f.Wdf$P4_age - mean(f.Wdf$P4_age, na.rm=T)
+# Self reports
+f.Wdf$pwb2_MC = f.Wdf$pwb2 - mean(f.Wdf$pwb2, na.rm=T)
+f.Wdf$P4_CESD_MC = f.Wdf$P4_CESD - mean(f.Wdf$P4_CESD, na.rm=T)
+f.Wdf$P4_STAItrait_MC = f.Wdf$P4_STAItrait - mean(f.Wdf$P4_STAItrait, na.rm=T)
+f.Wdf$COPE_denial_MC = f.Wdf$COPE_denial - mean(f.Wdf$COPE_denial, na.rm=T)
+# Inflammatory
+f.Wdf$IL6_MC = f.Wdf$IL6 - mean(f.Wdf$IL6, na.rm=T)
+f.Wdf$CRP_MC = f.Wdf$CRP - mean(f.Wdf$CRP, na.rm=T)
+
+```
+
+### Log transform inflammatory markers for normal distribution 
+```{r logtransform_IL6 and CRP}
+f.Ldf$IL6_T = log2(f.Ldf$IL6.x)
+f.Wdf$IL6_T = log2(f.Wdf$IL6)
+
+f.Ldf$CRP_T = log(f.Ldf$CRP.x, base=10)
+f.Wdf$CRP_T = log(f.Wdf$CRP, base=10)
+
+
+##mean center variable from transform
+f.Ldf$IL6_T_MC = f.Ldf$IL6_T - mean(f.Ldf$IL6_T, na.rm=T)
+f.Ldf$CRP_T_MC = f.Ldf$CRP_T - mean(f.Ldf$CRP_T, na.rm=T)
+```
+
+```{r}
+#save final df before tests
+
+#saveoutput data framework to easily retrieve 
+write.csv(f.Ldf,"psych.251.repro.f.Ldf.analysis.csv")
+write.csv(f.Wdf,"psych.251.repro.w.Ldf.analysis.csv")
+
+```
+
+
+### Summary statistics and demographics
+
+```{r summary stats if want to do more}
+summary(wDF$P1_race)
+
+wDF$race = as.factor(wDF$P1_race)
+
+summary(wDF$race)
+summary(as.factor(wDF$P1_sex))
+
+
+hist(f.Ldf$stress_CMC)
+hist(f.Ldf$IL6_T)
+hist(f.Ldf$CRP_T)
+
+```
+
+# TESTS
+
+## Stress-heart rate coherence associations
+
+### PWB
+```{r coherence_pwb}
+
+# Run the test 
+library("lmerTest")
+lmerM.pwb <- lmer(hr_value ~ stress_CMC * pwb2_MC_d10 + P4_age_MC*stress_CMC + (1 + stress_CMC|M2ID) + (1|M2FAMNUM.x), data = f.Ldf)
+a.pwb <- anova(lmerM.pwb, type=3, test="F")
+a.pwb
+summary(lmerM.pwb)
+
+  
+```
+
+### Depression
+```{r coherence_depression}
+
+#run the test
+lmerM.dep <- lmer(hr_value ~ stress_CMC *P4_CESD_MC_d10 + P4_age_MC*stress_CMC + (1 + stress_CMC|M2ID) + (1|M2FAMNUM.x), data = f.Ldf)
+a.dep<- anova(lmerM.pwb, type=3, test="F")
+a.dep
+summary(lmerM.dep)
+
+ 
+```
+
+### Anxiety
+```{r coherence_anxiety}
+
+# Run the test
+
+lmerM.anx <- lmer(hr_value ~ stress_CMC *P4_STAItrait_MC_d10 + P4_age_MC*stress_CMC + (1 + stress_CMC|M2ID) + (1|M2FAMNUM.x), data = f.Ldf)
+a.anx<- anova(lmerM.anx, type=3, test="F")
+a.anx
+summary(lmerM.anx)
+
+
+   
+```
+
+### IL6
+```{r coherence_IL6}
+
+# Run the test
+lmerM.IL6<- lmer(hr_value ~ stress_CMC *IL6_T_MC + P4_age_MC*stress_CMC + (1 + stress_CMC|M2ID) + (1|M2FAMNUM.x), data = f.Ldf)
+a.IL6<- anova(lmerM.IL6, type=3, test="F")
+a.IL6
+summary(lmerM.IL6)
+
+
+```
+
+### CRP
+```{r coherence_CRP}
+#Run the test
+lmerM.IL6<- lmer(hr_value ~ stress_CMC *IL6_T_MC + P4_age_MC*stress_CMC + (1 + stress_CMC|M2ID) + (1|M2FAMNUM.x), data = f.Ldf)
+a.IL6<- anova(lmerM.IL6, type=3, test="F")
+a.IL6
+summary(lmerM.IL6)
+
+
+  
+```
+
+### Denial
+```{r denial}
+
+#Run the test
+lmerM.den<- lmer(hr_value ~ stress_CMC *COPE_denial_MC+ P4_age_MC*stress_CMC + (1 + stress_CMC|M2ID) + (1|M2FAMNUM.x), data = f.Ldf)
+a.den<- anova(lmerM.den, type=3, test="F")
+a.den
+summary(lmerM.den)
+ 
+```
+
+## Multiple Comparisons Correction
+Holm-Bonferonni
+```{r multiple_comparisons}
+## p value for each test of a well-being marker
+p = c(2.99E-07, 2.06E-09, 1.70E-08, 2.91E-06, 0.00762, 6.18E-06)
+## Holm-bonferonni
+p.adjust(p, method= 'holm')
+# 
+```
+
+
+
+## FIGURE 1: Stress and heart rate by phase histograms
+
+Facet-wrapped histograms of stress and heart rate at each phase of stress induction
+
+```{r stress_by_phase_histograms}
+ylimits = c(0, 610)
+stressHist=ggplot()+
+geom_histogram(data=f.Ldf, aes(stress_value), fill="green", binwidth=1, color="black") +
+facet_wrap(~timepoint, ncol=5) +
+labs(x="Self-reported stress", y="Number of subjects") +
+ylim(ylimits)+
+scale_x_continuous(breaks=c(1,2,3,4,5,6,7,8,9,10) )+
+theme_bw(base_size=18)
+stressHist
+```
+
+```{r hr_by_phase_histograms}
+xlimits = c(30,150)
+ylimits = c(0, 240)
+hrHist=ggplot()+
+geom_histogram(data=f.Ldf, aes(hr_value), fill="red", binwidth=6, color="black") +
+facet_wrap(~timepoint, ncol=5) +
+labs(x="Heart rate", y="Number of subjects") +
+ylim(ylimits)+
+xlim(xlimits)+
+geom_vline(xintercept=75, size=.5, color="blue")+
+theme_bw(base_size=18)
+hrHist
+```
