@@ -1,0 +1,297 @@
+---
+title: "ps3b.251 Reproducibility Group B and choice 1"
+author: "Kris Evans"
+date: "11/7/2020"
+output: html_document
+---
+---
+title: "Reproducibility Report: Group B Choice 1"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+-------
+
+For this exercise, please try to reproduce the results from Experiment 1 of the associated paper (Farooqui & Manly, 2015). The PDF of the paper is included in the same folder as this Rmd file. 
+
+#### Methods summary: 
+
+Participants (N=21) completed a series of trials that required them to switch or stay from one task to the other. One task was to choose the larger value of the two values if surrounded by a green box. The other task was to choose the value with the larger font if surrounded by a blue box. Subliminal cues followed by a mask were presented before each trial. Cues included "O" (non-predictive cue), "M" (switch predictive cue), and "T" (repeat predictive cue). Reaction times and performance accuracy were measured.
+
+------
+
+#### Target outcomes: 
+
+Below is the specific result you will attempt to reproduce (quoted directly from the results section of Experiment 1):
+
+> Performance on switch trials, relative to repeat trials, incurred a switch cost that was evident in longer RTs (836 vs. 689 ms) and lower accuracy rates (79% vs. 92%). If participants were able to learn the predictive value of the cue that preceded only switch trials and could instantiate relevant anticipatory control in response to it, the performance on switch trials preceded by this cue would be better than on switch trials preceded by the nonpredictive cue. This was indeed the case (mean RT-predictive cue: 819 ms; nonpredictive cue: 871 ms; mean difference = 52 ms, 95% confidence interval, or CI = [19.5, 84.4]), two-tailed paired t(20) = 3.34, p < .01. However, error rates did not differ across these two groups of switch trials (predictive cue: 78.9%; nonpredictive cue: 78.8%), p = .8.
+------
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(echo=TRUE, warning=FALSE, message=FALSE)
+```
+
+## Step 1: Load packages
+
+```{r}
+library(tidyverse) # for data munging
+library(knitr) # for kable table formating
+library(haven) # import and export 'SPSS', 'Stata' and 'SAS' Files
+library(readxl) # import excel files
+# #optional packages:
+library(broom)
+```
+
+## Step 2: Load data
+
+```{r warning=FALSE}
+# This reads all the participants data (each is in a seperate xls file) in and combines them into one dataframe
+# Each xls has 250 rows, the rest is their calculations using excel, which we don't want in the data
+
+
+files <- dir('~/R Mac working folder/class/problem_sets/ps3/Group B/Choice 1/data/Experiment 1')
+data <- data.frame()
+id <- 1
+for (file in files){
+  if(file != 'Codebook.xls'){
+    temp_data <- read_xls(file.path('~/R Mac working folder/class/problem_sets/ps3/Group B/Choice 1/data/Experiment 1', file))
+    temp_data$id <- id
+    id <- id + 1
+    temp_data <- temp_data[1:250, ]
+    data <- rbind(data, temp_data)
+  }
+}
+```
+#had to take time to decipher and figure outhow to load and break down loading data, lesson on making this easy to do for authors and self
+
+
+```{r echo=FALSE}
+code_book_path <- '~/R Mac working folder/class/problem_sets/ps3/Group B/Choice 1/data/Experiment 1/Codebook.xls'
+d_codebook <- read_xls(code_book_path, col_names=FALSE) # Note that 2, 4, 8 aren't listed in codebook for Primes
+```
+
+## Step 3: Tidy data
+
+```{r}
+view(data)
+
+glimpse(data)
+
+unique(data$id) #shows us that we have 21 (#unique ids) respondents 5250 observations total on 23 diff variables
+unique(data$Prime) #checking the unique variables, good reminder to check all the data it is also a chr 2, 4, 8 added to primes, 
+unique(data$TaskType) #aligned to coding
+unique(data$TrialType) #does show 0, 1, 2 for trial types, what are the 0s? NAs? maybe test runs? 0=neither?
+data %>% filter(TrialType == "0")
+```
+
+```{r bp-check-prime-codes, echo=FALSE, eval=FALSE}
+#taken from solution to see how they would have evaluated this data set, would have missed that there was someon who was shown both? the number of participants or obs for each vriable was good
+# Note this, chunk is not a part of the evaluation, 
+# just for sanity checking
+#
+data %>% select(Block_Number) %>% unique
+
+
+# Prime coding
+# ------------
+
+# Participants with numbered primes 2, 4, and 8
+number_prime_ids <- data %>% 
+  filter(Prime %in% c(2, 4, 8)) %>%
+  select(id) %>%
+  unique
+
+# Participants with lettered primes 2, 4, and 8
+letter_prime_ids <- data %>% 
+  filter(Prime %in% c('O', 'M', 'T')) %>%
+  select(id) %>% 
+  unique
+
+
+# One person seems to have seen both???
+intersect(number_prime_ids$id, letter_prime_ids$id)
+
+# Occurences of numbered primes... #this confused me but think something got in the way with grouping as event number seems to be 0-200 supposed to be the 
+data %>%
+  filter(Prime %in% c(2, 4, 8)) %>%
+  select(Event_Number) %>%
+  group_by(Event_Number) %>%
+  summarise(cnt=n()) %>%
+  ggplot(aes(x=Event_Number, y=cnt)) +
+    geom_bar(stat='identity')
+```
+
+Each row is an observation. The data is already in tidy format.
+
+## Step 4: Run analysis
+
+### Pre-processing
+#reported taking the stable "median" values but also report means in the paper?
+```{r}
+
+
+```
+
+
+### knew there was an issue with the additional misaligned responses but was unable to determine the coding, would have continued without, reminder to be resource goas planned or try to make do with what you have and also report it then
+
+```{r recode} 
+data$originalprime2 <- data$Prime ##oh this is cool realized this is shortcut to create new variables within the called dataset
+data$originalPrime <- data$Prime
+data$Prime <- recode(data$Prime, '2' = "O", '4' = "T", '8' = "M")
+
+#recode variables to make referencing easier
+data$originalTrialType <- data$TrialType
+data$Prime <- recode(data$Prime, 'O' = "Nonpredictive Cue", 'M' = "Switch Predictive Cue", 'T' = "Repeat Predictive Cue")
+data$TrialType <- recode(data$TrialType, '0' = "Neither", '1' = "Repeat Trials", '2' = "Switch Trials")
+```
+
+### Descriptive statistics
+
+> Performance on switch trials, relative to repeat trials, incurred a switch cost that was evident in longer RTs (836 vs. 689 ms) -median taken unless stated otherwise
+
+```{r}
+
+# reproduce the above results here
+str(data)
+
+
+med_RT1 <- data %>%
+  group_by(TrialType) %>%
+  summarise(median_RT = median(RT),
+            mean_RT = mean(RT))
+
+
+kable(med_RT1)
+# doesnt match exact numbers but the relationship yes
+
+```
+
+```{r median_RT}
+med_RT <- data %>% 
+        group_by(TrialType) %>% 
+        summarise(median_RT = median(RT),
+                  mean_RT=mean(RT))
+
+kable(med_RT[-1, ])
+```
+
+
+> Performance on switch trials, relative to repeat trials, incurred a switch cost that was evident in [...] lower accuracy rates (79% vs. 92%)
+
+```{r}
+
+# reproduce the above results here, almost match with rounding
+
+mean_cor <- data %>%
+  group_by(TrialType) %>%
+  summarise(accuracy = mean(RespCorr))
+  
+```
+
+```{r mean_Correct_Response}
+mean_RespCorr <- data %>% 
+        group_by(TrialType) %>%
+        summarise(accuracy = mean(RespCorr))
+
+kable(mean_RespCorr[-1, ])
+```
+
+Now you will analyze Predictive Switch Cues vs Non-predictive Switch Cues. Let's start with reaction time.
+
+> This was indeed the case (mean RT-predictive cue: 819 ms; nonpredictive cue: 871 ms; ... )
+
+```{r}
+# reproduce the above results here, does not match mean RTs
+
+mean_RT_Prime <- data %>%
+  group_by(Prime) %>%
+  summarise(median_RT = median(RT),
+            mean_RT = mean(RT))
+
+kable(mean_RT_Prime)
+```
+
+
+
+```{r mean Prime RT}
+mean_Prime_RT_Ind <- data %>% 
+  filter(TrialType == "Switch Trials") %>% 
+  group_by(id, Prime) %>% 
+  summarise(meanRT = mean(RT),
+            medianRT = median(RT)) #Individual Means
+mean_Prime_RT <- mean_Prime_RT_Ind %>% group_by(Prime) %>% 
+  summarise(grandmeanRT = mean(meanRT),
+            grandMedianRT = median(medianRT)) #Grand Means
+
+kable(mean_Prime_RT)
+```
+
+Next you will try to reproduce error rates for Switch Predictive Cues vs Switch Non-predictive Cues.
+
+> However, error rates did not differ across these two groups of switch trials (predictive cue: 78.9%; nonpredictive cue: 78.8%)
+```{r Prime Accuracy}
+# reproduce the above results here - made it here in 3 hr
+```
+
+```{r}
+mean_Prime_RespCorr_Ind <- data %>% filter(TrialType == "Switch Trials") %>% group_by(id, Prime) %>% summarise(meanCorr = mean(RespCorr)) #Individual Means
+mean_Prime_RespCorr <- mean_Prime_RespCorr_Ind %>% group_by(Prime) %>% summarise(grandmeanCorr = mean(meanCorr)) #Grand Means
+
+kable(mean_Prime_RespCorr)
+```
+
+```{r bp-check-prime-accuracy, echo=FALSE, eval=FALSE}
+df_accuracy <- data %>% 
+  filter(TrialType == "Switch Trials") %>% 
+  mutate(prime_coding=ifelse(originalPrime %in% c(2, 4, 6), 'numbers', 'letters')) %>%
+  group_by(prime_coding, id, originalPrime) %>% 
+  summarise(meanCorr = mean(RespCorr)) #Individual Means
+
+df_accuracy %>%
+  group_by(originalPrime) %>% 
+  summarise(grandmeanCorr = mean(meanCorr)) #Grand
+
+```
+
+### Inferential statistics
+
+The first claim is that in switch trials, predictive cues lead to statistically significant faster reaction times than nonpredictive cues.
+
+> ... the performance on switch trials preceded by this cue would be better than on switch trials preceded by the nonpredictive cue. This was indeed the case (mean RT-predictive cue: 819 ms; nonpredictive cue: 871 ms; mean difference = 52 ms, 95% confidence interval, or CI = [19.5, 84.4]), two-tailed paired t(20) = 3.34, p < .01.
+```{r Prime RT test}
+# reproduce the above results here
+```
+
+Next, test the second claim.
+
+> However, error rates did not differ across these two groups of switch trials (predictive cue: 78.9%; nonpredictive cue: 78.8%), p = .8.
+```{r mean Prime accuracy test}
+# reproduce the above results here
+```
+
+# Step 5: Reflection
+
+Were you able to reproduce the results you attempted to reproduce? If not, what part(s) were you unable to reproduce?
+
+> ANSWER HERE
+How difficult was it to reproduce your results? I was unable to reproduce the entire results due to time but was able to complete some phases. Still having difficulty with knowing which verbs to put together to look at specific subsets and calling summary information correctly, howeverthis was helpful.
+
+> ANSWER HERE
+What aspects made it difficult? What aspects made it easy?I struggled with the loading and preprocessing part and required detailed look of the paper and thinking about how to get the results. I was able to do the descriptives but were going to be wrong without ensuring I Was able to handle some of the coding errors within the data set. I was confused if I was moving forward alogn correctly the whole time but also went back with some of the solutions to learn.
+
+> ANSWER HERE
+© 2020 GitHub, Inc.
+Terms
+Privacy
+Security
+Status
+Help
+Contact GitHub
+Pricing
+API
+Training
+Blog
+About

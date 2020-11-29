@@ -52,7 +52,7 @@ df <- fvs %>% arrange(subid) %>% group_by(subid) %>% filter(condition == 'Faces_
     age = age) ##also revealed missing subid 5 from the faces medium , missing p 5 and 105
 
 
-ggplot(fvs, aes(x=age)) + geom_histogram()  #may be wrong because adding in duplicates ages per participant - how to get only 1 age per subid?
+ggplot(df, aes(x=age)) + geom_histogram()  #may be wrong because adding in duplicates ages per participant - how to get only 1 age per subid?
 
 
 
@@ -80,8 +80,8 @@ I would run a lm and look at the interaction between these variables to see that
 
 
 ```{r}
-fvs$condition <- to_factor(fvs$condition) #change to factors to make sure but R reads it ame, still significant with faces plus condition and age
-d.lm <- lm(hand.look ~ condition + age, fvs) #shows relationships estimated from above
+
+d.lm <- lm(hand.look ~ condition * age, fvs) #shows relationships estimated from above
 summary(d.lm)
 
 ```
@@ -120,6 +120,27 @@ hist(x)
 
 t.test(x)
 
+
+
+#solutions from julie:
+
+
+set.seed(55)
+
+nsamples = 10000
+
+participant_n = 30
+
+for_p_values <- tibble(nsamples)
+
+for (i in 1:nsamples) {
+  for_samples <- rnorm(30, mean = 0, sd = 1)
+  for_p_values[i] <- t.test(for_samples)$p.value
+}
+
+for_prop_under05 <- sum(for_p_values < 0.05)/10000
+
+for_prop_under05
 ```
 
 'Next, do this using the `replicate` function:'
@@ -130,6 +151,15 @@ ts = replicate(10000,t.test(rnorm(30))$statistic)
 
 
 range(ts)
+
+
+set.seed(55)
+
+rep_p_values <- replicate(nsamples, t.test(rnorm(participant_n))$p.value)
+
+rep_prop_under05 <- sum(rep_p_values < 0.05)/10000
+
+rep_prop_under05
 ```
 
 'How does this compare to the intended false-positive rate of $\alpha=0.05$?'
@@ -147,12 +177,30 @@ First, write a function that implements this sampling regime.
 
 ```{r}
 double.sample <- function () {
+  sample_1 <- rnorm(participant_n)
+  psniff_p_value <- (t.test(sample_1)$p.value)
+  if (psniff_p_value > .05 & psniff_p_value < 0.25) {
+    sample_2 <- c(sample_1, rnorm(participant_n))
+    psniff_p_value2 <- t.test(sample_2)$p.value
+    return(psniff_p_value2)
+  } else {return(psniff_p_value)}
 }
 ```
 
 Now call this function 10k times and find out what happens. 
 
 ```{r}
+
+set.seed(55)
+
+nsamples2 <- 10000
+
+psniff_pvalues <- replicate(nsamples2, double.sample())
+
+psniff_prop_under05 <- sum(psniff_pvalues < 0.05)/10000
+
+psniff_prop_under05
+
 ```
 
 Is there an inflation of false positives? How bad is it?
@@ -172,6 +220,26 @@ HINT: Try to do this by making the function `double.sample` take the upper p val
 HINT 2: You may need more samples. Find out by looking at how the results change from run to run.
 
 ```{r}
+
+set.seed(55)
+
+double.sample.05 <- function () {
+  sample_1_05 <- rnorm(participant_n)
+  psniff_p_value_05 <- (t.test(sample_1_05)$p.value)
+  if (psniff_p_value_05 > .05 & psniff_p_value_05 < 0.5) {
+    sample_2_05 <- c(sample_1_05, rnorm(participant_n))
+    psniff_p_value2_05 <- t.test(sample_2_05)$p.value
+    return(psniff_p_value2_05)
+  } else {return(psniff_p_value_05)}
+}
+
+nsamples3 <- 10000
+
+psniff_pvalues_05 <- replicate(nsamples3, double.sample.05())
+
+psniff_prop_under05_05 <- sum(psniff_pvalues_05 < 0.05)/10000
+
+psniff_prop_under05_05
 ```
 
 What do you conclude on the basis of this simulation? How bad is this kind of data-dependent policy?

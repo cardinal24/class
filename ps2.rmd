@@ -29,8 +29,7 @@ library(knitr)
 
 # Load Data
 
-```{r eval = FALSE}
-knitr::opts_chunk$set(eval = FALSE)
+```{r}
 
 Tamiretal2008ReplicationData <- read_sav("~/Dropbox/My Mac (PSY-C02D76FGML85)/Downloads/Tamiretal2008ReplicationData.sav")
 
@@ -313,19 +312,21 @@ There are still a few more steps to go for the performance hypothesis. We need t
 
 To compute the difference score, we have to make our data a bit wider. We now want to subtract the pre-music scores from the post-music scores, which is easiest to do if they are in two different columns. To do this we'll use the `spread` function (which is more or less the opposite of `gather`)
 
-```{r}
+```{r eval = FALSE}
 performance_diff_d = performance_hyp_long_d %>%
-  mutate(WithMusic = factor(WithMusic, levels=c(F, T), labels=c("PreMusic", "PostMusic"))) %>% # first, tweak the variable so our code is easier to read.
-  ##select(-c("Score", "Measurement")) %>% # now we remove columns we don't need (bonus: leave them in and see if you can understand what goes wrong!)
-  spread(WithMusic, z_scored_performance) %>%
-  mutate(ImprovementScore=PostMusic-PreMusic) ## not sure whats happening with the select but looks like the NAs in the pre and post mess up the improvment score, would be best to turn NAs into 0s?
+  dplyr::mutate(WithMusic = factor(WithMusic, levels=c(F, T), labels=c("PreMusic", "PostMusic"))) %>% # first, tweak the variable so our code is easier to read.
+  dplyr::filter(!is.na(Score)) %>%
+  dplyr::select(-c(Score, Measurement)) %>% # now we remove columns we don't need (bonus: leave them in and see if you can understand what goes wrong!)
+  pivot_wider(names_from = WithMusic, values_from = z_scored_performance) %>%
+  dplyr::mutate(ImprovementScore=PostMusic-PreMusic) ## not sure whats happening with the select but looks like the NAs in the pre and post mess up the improvment score, would be best to turn NAs into 0s?
 
+rlang::last_error()
 ```
 
 Let's take a look at the end result:
 
 ```{r}
-performance_diff_d
+
 
 ```
 
@@ -334,7 +335,7 @@ If you don't understand every step of that code (or any other `dplyr` code), it 
 Now we're finally to reproduce Fig. 2 from Tamir et al., we just need to get the mean differences within each game and each kind of music, and save them to a variable called `MeanImprovementScore`:
 ###where i left off had issues seeing problem and getting rid of 0 
 
-```{r}
+```{r eval = F}
 
 performance_diff_summary_d = performance_diff_d %>%  tidyr::replace_na(list(PreMusic=0, PostMusic=0)) %>%
   group_by(ConfrontationalGame, MusicCondition) %>%
@@ -348,13 +349,13 @@ summarise(MeanImprovementScore = mean(ImprovementScore))
 
 Let's take a look at your result (if it has `NA` values, how can you fix it?):
 
-```{r}
+```{r eval = F}
 performance_diff_summary_d
 ```
 
 and plot it!
 
-```{r TamirFig2}
+```{r TamirFig2, eval = F}
 ggplot(performance_diff_summary_d, aes(x=ConfrontationalGame, y=MeanImprovementScore, fill=MusicCondition)) +
   geom_bar(position="dodge", stat="identity") + 
   scale_fill_brewer(palette="Set1")
@@ -364,7 +365,7 @@ ggplot(performance_diff_summary_d, aes(x=ConfrontationalGame, y=MeanImprovementS
 
 Not quite as exact a replication of the effect as Fig. 1. This concurs with the [replication report](https://osf.io/7i2tf/), which says that the hypothesis 1 effect replicated, but hypothesis 2 did not. Here's a model just for thoroughness (again, don't worry too much about it):
 
-```{r}
+```{r eval=F}
 performance_model = lm(ImprovementScore ~ ConfrontationalGame * MusicCondition, performance_diff_d)
 summary(performance_model)
 ```
